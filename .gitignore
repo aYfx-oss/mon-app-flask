@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Outputs générés
+backend/outputs/*.docx
+backend/uploads/*
+
+# Fichiers système
+.DS_Store
+.env
+
+# Virtual env
+venv/
+.venv/
