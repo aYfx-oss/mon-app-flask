@@ -1,6 +1,6 @@
 """
 kimi_extractor.py — Extraction structurée du CV via Kimi K2 (NVIDIA NIM)
-Approche multi-étapes pour gérer les CV longs
+Approche multi-étapes optimisée pour gérer les CV longs
 """
 import os, json, requests, re
 
@@ -9,7 +9,7 @@ API_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 MODEL = "moonshotai/kimi-k2-instruct"
 
 def call_kimi(system_prompt: str, user_text: str, max_tokens: int = 8000) -> str:
-    """Appel générique à Kimi"""
+    """Appel générique à Kimi avec timeout augmenté"""
     if not NVIDIA_API_KEY:
         raise ValueError("NVIDIA_API_KEY non défini")
     
@@ -27,7 +27,8 @@ def call_kimi(system_prompt: str, user_text: str, max_tokens: int = 8000) -> str
         "max_tokens": max_tokens
     }
     
-    resp = requests.post(API_URL, headers=headers, json=payload, timeout=180)
+    # ✅ FIX 1: Augmenter le timeout à 240s (4 minutes)
+    resp = requests.post(API_URL, headers=headers, json=payload, timeout=240)
     
     if resp.status_code != 200:
         raise RuntimeError(f"Erreur API Kimi: {resp.status_code} - {resp.text[:200]}")
@@ -45,6 +46,9 @@ def call_kimi(system_prompt: str, user_text: str, max_tokens: int = 8000) -> str
 
 def extract_basic_info(text: str) -> dict:
     """Étape 1 : Extraire infos de base, compétences, langues, certifications"""
+    # ✅ FIX 2: Limiter la taille du texte à 12000 caractères
+    text_trimmed = text[:12000]
+    
     prompt = """Extrais les informations de base du CV et retourne UNIQUEMENT un JSON valide :
 {
   "nom_prenom": "Prénom NOM",
@@ -60,12 +64,15 @@ def extract_basic_info(text: str) -> dict:
 }
 Retourne UNIQUEMENT le JSON, rien d'autre."""
     
-    result = call_kimi(prompt, text, max_tokens=4000)
+    result = call_kimi(prompt, text_trimmed, max_tokens=3000)
     return json.loads(result)
 
 
 def extract_experiences(text: str) -> list:
     """Étape 2 : Extraire les expériences professionnelles"""
+    # ✅ FIX 2: Limiter la taille du texte à 15000 caractères
+    text_trimmed = text[:15000]
+    
     prompt = """Extrais TOUTES les expériences professionnelles du CV et retourne un JSON valide :
 {
   "experiences": [
@@ -85,13 +92,16 @@ def extract_experiences(text: str) -> list:
 }
 Retourne UNIQUEMENT le JSON."""
     
-    result = call_kimi(prompt, text, max_tokens=12000)
+    result = call_kimi(prompt, text_trimmed, max_tokens=10000)
     data = json.loads(result)
     return data.get("experiences", [])
 
 
 def extract_formation_projets(text: str) -> dict:
     """Étape 3 : Extraire formation, projets, autres références"""
+    # ✅ FIX 2: Limiter la taille du texte à 10000 caractères
+    text_trimmed = text[:10000]
+    
     prompt = """Extrais la formation, projets marquants et autres références du CV. Retourne un JSON valide :
 {
   "formations": [
@@ -111,7 +121,7 @@ def extract_formation_projets(text: str) -> dict:
 }
 Retourne UNIQUEMENT le JSON."""
     
-    result = call_kimi(prompt, text, max_tokens=4000)
+    result = call_kimi(prompt, text_trimmed, max_tokens=3000)
     return json.loads(result)
 
 
@@ -120,7 +130,7 @@ def extract_cv_data(text: str) -> dict:
     Point d'entrée principal : traite le CV en 3 étapes
     pour gérer les CV longs sans dépasser la limite de contexte
     """
-    print("🔄 Extraction CV en cours (multi-étapes)...")
+    print("🔄 Extraction CV en cours (multi-étapes optimisées)...")
     
     # Étape 1 : Infos de base
     print("  ➜ Étape 1/3 : Infos de base, compétences, langues...")
@@ -139,4 +149,5 @@ def extract_cv_data(text: str) -> dict:
     return cv_data
 
 
+# Alias pour compatibilité
 structure_cv_with_kimi = extract_cv_data
