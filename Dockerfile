@@ -1,9 +1,11 @@
 FROM python:3.11-slim
 
-# Installer les dépendances système pour lxml
 RUN apt-get update && apt-get install -y \
+    libxml2 \
+    libxslt1.1 \
     libxml2-dev \
     libxslt-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
