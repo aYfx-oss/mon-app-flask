@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Maltem CV Converter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --red: #E9272D;
+      --dark: #231F20;
+      --grey: #6b6b6b;
+      --light-grey: #f4f4f4;
+      --white: #ffffff;
+    }
+
+    body {
+      font-family: 'Century Gothic', 'Gill Sans', Arial, sans-serif;
+      background: var(--light-grey);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--white);
+      border-bottom: 4px solid var(--red);
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-bar {
+      width: 5px;
+      height: 42px;
+      background: var(--red);
+      border-radius: 3px;
+    }
+
+    .logo-text {
+      font-size: 22px;
+      font-weight: bold;
+      color: var(--dark);
+      letter-spacing: 0.5px;
+    }
+
+    .logo-text span {
+      color: var(--red);
+    }
+
+    .header-sub {
+      font-size: 12px;
+      color: var(--grey);
+      margin-top: 2px;
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.10);
+      padding: 48px;
+      max-width: 560px;
+      width: 100%;
+    }
+
+    .card-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .card-subtitle {
+      font-size: 14px;
+      color: var(--grey);
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 12px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fafafa;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--red);
+      background: #fff5f5;
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .drop-text {
+      font-size: 16px;
+      color: var(--dark);
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .drop-hint {
+      font-size: 13px;
+      color: var(--grey);
+    }
+
+    .file-selected {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: #fff5f5;
+      border: 1px solid var(--red);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 16px;
+    }
+
+    .file-selected.show { display: flex; }
+
+    .file-icon { font-size: 24px; }
+
+    .file-info { flex: 1; text-align: left; }
+    .file-name { font-size: 14px; font-weight: bold; color: var(--dark); word-break: break-all; }
+    .file-size { font-size: 12px; color: var(--grey); }
+
+    .file-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      color: var(--grey);
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+    .file-remove:hover { color: var(--red); }
+
+    /* ── Button ── */
+    .btn-convert {
+      width: 100%;
+      margin-top: 24px;
+      padding: 16px;
+      background: var(--red);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-convert:hover:not(:disabled) {
+      background: #c01f24;
+      transform: translateY(-1px);
+    }
+
+    .btn-convert:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Progress ── */
+    .progress-area {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .progress-area.show { display: block; }
+
+    .progress-bar-bg {
+      background: #eee;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--red);
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .progress-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #aaa;
+      transition: color 0.3s;
+    }
+
+    .step.active { color: var(--dark); font-weight: bold; }
+    .step.done { color: #4caf50; }
+
+    .step-icon { font-size: 16px; width: 20px; text-align: center; }
+
+    /* ── Alert ── */
+    .alert {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-top: 20px;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .alert.show { display: flex; }
+    .alert-error { background: #fff0f0; border: 1px solid #ffcdd2; color: #b71c1c; }
+    .alert-success { background: #f0fff4; border: 1px solid #c8e6c9; color: #1b5e20; }
+    .alert-icon { font-size: 18px; flex-shrink: 0; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--dark);
+      color: #888;
+      text-align: center;
+      padding: 16px;
+      font-size: 12px;
+    }
+
+    footer span { color: var(--red); }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-bar"></div>
+      <div>
+        <div class="logo-text">maltem <span>africa</span></div>
+        <div class="header-sub">CV Converter — Powered by Kimi AI</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <div class="card">
+      <div class="card-title">Convertir votre CV</div>
+      <div class="card-subtitle">
+        Uploadez votre CV (PDF ou DOCX) et obtenez instantanément une version 
+        reformatée au design officiel <strong>Maltem Africa</strong>.
+      </div>
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".pdf,.docx" />
+        <div class="drop-icon">📄</div>
+        <div class="drop-text">Glissez votre CV ici</div>
+        <div class="drop-hint">ou cliquez pour sélectionner un fichier PDF ou DOCX</div>
+      </div>
+
+      <!-- Fichier sélectionné -->
+      <div class="file-selected" id="fileSelected">
+        <div class="file-icon" id="fileIcon">📄</div>
+        <div class="file-info">
+          <div class="file-name" id="fileName">—</div>
+          <div class="file-size" id="fileSize">—</div>
+        </div>
+        <button class="file-remove" id="fileRemove" title="Retirer le fichier">✕</button>
+      </div>
+
+      <!-- Bouton -->
+      <button class="btn-convert" id="btnConvert" disabled>
+        🔄 Convertir au format Maltem
+      </button>
+
+      <!-- Progress -->
+      <div class="progress-area" id="progressArea">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+        <div class="progress-steps">
+          <div class="step" id="step1"><span class="step-icon">📤</span> Envoi du fichier...</div>
+          <div class="step" id="step2"><span class="step-icon">🔍</span> Extraction du contenu...</div>
+          <div class="step" id="step3"><span class="step-icon">🤖</span> Analyse IA (Kimi)...</div>
+          <div class="step" id="step4"><span class="step-icon">🎨</span> Génération du CV Maltem...</div>
+          <div class="step" id="step5"><span class="step-icon">⬇️</span> Téléchargement en cours...</div>
+        </div>
+      </div>
+
+      <!-- Alertes -->
+      <div class="alert alert-error" id="alertError">
+        <span class="alert-icon">⚠️</span>
+        <span id="errorMsg">Une erreur est survenue.</span>
+      </div>
+      <div class="alert alert-success" id="alertSuccess">
+        <span class="alert-icon">✅</span>
+        <span>Votre CV Maltem a été généré avec succès et téléchargé !</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    © 2025 <span>Maltem Africa</span> — CV Converter. Tous droits réservés.
+  </footer>
+
+  <script>
+    const fileInput   = document.getElementById('fileInput');
+    const dropZone    = document.getElementById('dropZone');
+    const fileSelected = document.getElementById('fileSelected');
+    const fileName    = document.getElementById('fileName');
+    const fileSize    = document.getElementById('fileSize');
+    const fileIcon    = document.getElementById('fileIcon');
+    const fileRemove  = document.getElementById('fileRemove');
+    const btnConvert  = document.getElementById('btnConvert');
+    const progressArea= document.getElementById('progressArea');
+    const progressBar = document.getElementById('progressBar');
+    const alertError  = document.getElementById('alertError');
+    const errorMsg    = document.getElementById('errorMsg');
+    const alertSuccess= document.getElementById('alertSuccess');
+
+    let selectedFile = null;
+
+    // ── Drag & drop ────────────────────────────────────────────
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['pdf', 'docx'].includes(ext)) {
+        showError('Format non supporté. Utilisez un fichier PDF ou DOCX.');
+        return;
+      }
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileSize.textContent = formatSize(file.size);
+      fileIcon.textContent = ext === 'pdf' ? '📕' : '📘';
+      fileSelected.classList.add('show');
+      btnConvert.disabled = false;
+      hideAlerts();
+    }
+
+    fileRemove.addEventListener('click', () => {
+      selectedFile = null;
+      fileInput.value = '';
+      fileSelected.classList.remove('show');
+      btnConvert.disabled = true;
+      hideAlerts();
+    });
+
+    // ── Conversion ─────────────────────────────────────────────
+    btnConvert.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      btnConvert.disabled = true;
+      hideAlerts();
+      showProgress();
+
+      const formData = new FormData();
+      formData.append('cv_file', selectedFile);
+
+      try {
+        setStep(1, 'active');
+        setProgress(10);
+
+        const response = await fetch('/convert', {
+          method: 'POST',
+          body: formData
+        });
+
+        setStep(1, 'done');
+        setStep(2, 'active');
+        setProgress(30);
+
+        await delay(400);
+        setStep(2, 'done');
+        setStep(3, 'active');
+        setProgress(55);
+
+        await delay(500);
+        setStep(3, 'done');
+        setStep(4, 'active');
+        setProgress(80);
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Erreur serveur');
+        }
+
+        setStep(4, 'done');
+        setStep(5, 'active');
+        setProgress(95);
+
+        // Téléchargement du fichier
+        const blob = await response.blob();
+        const disposition = response.headers.get('Content-Disposition');
+        let dlName = 'CV_Maltem.docx';
+        if (disposition && disposition.includes('filename=')) {
+          dlName = disposition.split('filename=')[1].replace(/"/g, '').trim();
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = dlName;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        setStep(5, 'done');
+        setProgress(100);
+        await delay(400);
+
+        hideProgress();
+        alertSuccess.classList.add('show');
+        btnConvert.disabled = false;
+
+      } catch (err) {
+        hideProgress();
+        showError(err.message);
+        btnConvert.disabled = false;
+      }
+    });
+
+    // ── Helpers UI ─────────────────────────────────────────────
+    function showProgress() {
+      progressArea.classList.add('show');
+      ['step1','step2','step3','step4','step5'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('active', 'done');
+      });
+      setProgress(0);
+    }
+
+    function hideProgress() {
+      progressArea.classList.remove('show');
+    }
+
+    function setStep(n, state) {
+      const el = document.getElementById('step' + n);
+      el.classList.remove('active', 'done');
+      if (state) el.classList.add(state);
+    }
+
+    function setProgress(pct) {
+      progressBar.style.width = pct + '%';
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      alertError.classList.add('show');
+    }
+
+    function hideAlerts() {
+      alertError.classList.remove('show');
+      alertSuccess.classList.remove('show');
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' o';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+    }
+
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  </script>
+</body>
+</html>
