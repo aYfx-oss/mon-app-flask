@@ -49,11 +49,12 @@ def extract_cv_data(text: str) -> dict:
     # ── Étape 1 : Infos de base ──────────────────────────────────────────────
     prompt1 = """Analyse attentivement ce CV et extrais ces informations.
 IMPORTANT : Le nom et prénom sont généralement au tout début du CV, souvent en titre ou en gros.
-Cherche bien le vrai nom de la personne, ne mets JAMAIS "Prénom NOM" comme valeur.
+Cherche bien le vrai nom de la personne.
+Si le nom est introuvable dans le texte, mets exactement "NOM PRENOM" (pas autre chose).
 
 Retourne ce JSON exact :
 {
-  "nom_prenom": "NOM ET PRÉNOM",
+  "nom_prenom": "le vrai prénom et nom de la personne trouvé dans le CV, ou NOM PRENOM si introuvable",
   "titre_poste": "Titre du poste actuel ou recherché",
   "annees_experience": "X ans d'expérience (calcule depuis les dates)",
   "a_propos": "Si résumé présent dans le CV → copie-le exactement. Sinon → génère 2-3 phrases professionnelles basées sur le profil réel de la personne",
@@ -100,6 +101,10 @@ Retourne ce JSON exact :
     cv_data.update(result1)
     cv_data.update(result2)
     cv_data.update(result3)
+
+    # Vérification finale : si nom vide → forcer NOM PRENOM
+    if not cv_data.get("nom_prenom", "").strip():
+        cv_data["nom_prenom"] = "NOM PRENOM"
 
     return cv_data
 
