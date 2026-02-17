@@ -1,6 +1,5 @@
 """
 kimi_extractor.py — Extraction structurée du CV via Kimi K2 (NVIDIA NIM)
-Approche multi-étapes correcte : chaque appel reçoit peu de texte et génère peu de JSON
 """
 import os, json, requests
 
@@ -10,7 +9,6 @@ MODEL   = "moonshotai/kimi-k2-instruct"
 
 
 def call_kimi(prompt: str, text: str) -> str:
-    """Appel générique à Kimi avec un texte limité"""
     if not NVIDIA_API_KEY:
         raise ValueError("NVIDIA_API_KEY non défini")
 
@@ -35,7 +33,6 @@ def call_kimi(prompt: str, text: str) -> str:
 
     content = resp.json()["choices"][0]["message"]["content"].strip()
 
-    # Nettoyer markdown
     if content.startswith("```"):
         lines = content.split("\n")
         content = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
@@ -44,33 +41,22 @@ def call_kimi(prompt: str, text: str) -> str:
     return content
 
 
-def split_text(text: str, max_chars: int = 4000) -> list:
-    """Découpe le texte en chunks"""
-    chunks = []
-    while len(text) > max_chars:
-        split_at = text.rfind("\n", 0, max_chars)
-        if split_at == -1:
-            split_at = max_chars
-        chunks.append(text[:split_at])
-        text = text[split_at:]
-    chunks.append(text)
-    return chunks
-
-
 def extract_cv_data(text: str) -> dict:
-    """Extraction multi-étapes du CV"""
 
-    chunks = split_text(text, max_chars=4000)
-    first_chunk = chunks[0]
-    all_text = text[:8000]  # Pour les expériences on prend plus
+    first_chunk = text[:4000]
+    all_text = text[:8000]
 
     # ── Étape 1 : Infos de base ──────────────────────────────────────────────
-    prompt1 = """Extrais uniquement ces informations du CV et retourne ce JSON :
+    prompt1 = """Analyse attentivement ce CV et extrais ces informations.
+IMPORTANT : Le nom et prénom sont généralement au tout début du CV, souvent en titre ou en gros.
+Cherche bien le vrai nom de la personne, ne mets JAMAIS "Prénom NOM" comme valeur.
+
+Retourne ce JSON exact :
 {
-  "nom_prenom": "Prénom NOM",
-  "titre_poste": "Titre du poste",
-  "annees_experience": "X ans d'expérience",
-  "a_propos": "Si résumé présent → copie-le. Sinon → génère 2-3 phrases pro basées sur le profil",
+  "nom_prenom": "le vrai prénom et nom de la personne trouvé dans le CV",
+  "titre_poste": "Titre du poste actuel ou recherché",
+  "annees_experience": "X ans d'expérience (calcule depuis les dates)",
+  "a_propos": "Si résumé présent dans le CV → copie-le exactement. Sinon → génère 2-3 phrases professionnelles basées sur le profil réel de la personne",
   "competences": [{"categorie": "Catégorie", "items": ["item1", "item2"]}],
   "certifications": ["cert1", "cert2"],
   "langues": ["Français", "Anglais"]
@@ -79,13 +65,13 @@ def extract_cv_data(text: str) -> dict:
     result1 = json.loads(call_kimi(prompt1, first_chunk))
 
     # ── Étape 2 : Expériences ────────────────────────────────────────────────
-    prompt2 = """Extrais TOUTES les expériences professionnelles et retourne ce JSON :
+    prompt2 = """Extrais TOUTES les expériences professionnelles du CV et retourne ce JSON :
 {
   "experiences": [
     {
       "periode": "2022 – 2024",
-      "entreprise": "ENTREPRISE",
-      "poste": "Poste",
+      "entreprise": "NOM ENTREPRISE",
+      "poste": "Titre du poste",
       "direction": "",
       "contexte": "Contexte de la mission",
       "objectifs": [],
@@ -100,7 +86,7 @@ def extract_cv_data(text: str) -> dict:
     result2 = json.loads(call_kimi(prompt2, all_text))
 
     # ── Étape 3 : Formation et projets ───────────────────────────────────────
-    prompt3 = """Extrais la formation, projets marquants et autres références et retourne ce JSON :
+    prompt3 = """Extrais la formation, projets marquants et autres références du CV et retourne ce JSON :
 {
   "formations": [{"annee": "2020", "diplome": "Diplôme", "etablissement": "École"}],
   "projets_marquants": ["projet1", "projet2"],
@@ -109,7 +95,7 @@ def extract_cv_data(text: str) -> dict:
 
     result3 = json.loads(call_kimi(prompt3, first_chunk))
 
-    # ── Fusion des résultats ─────────────────────────────────────────────────
+    # ── Fusion ───────────────────────────────────────────────────────────────
     cv_data = {}
     cv_data.update(result1)
     cv_data.update(result2)
