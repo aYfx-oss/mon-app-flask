@@ -436,6 +436,21 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
             p=doc.add_paragraph(); sp(p, before=0, after=0)
             sf(p.add_run(langue), size_pt=10, color=BLACK)
 
+    refs=cv_data.get("autres_references",[])
+    if refs:
+        section_title(doc, "AUTRES RÉFÉRENCES")
+        for ref in refs:
+            p=doc.add_paragraph(); sp(p, before=0, after=0)
+            sf(p.add_run(f"{ref.get('entreprise','')} : "), size_pt=10, bold=True, color=RED)
+            sf(p.add_run(ref.get("poste","")), size_pt=10, color=BLACK)
+
+    projets=cv_data.get("projets_marquants",[])
+    if projets:
+        section_title(doc, "PROJETS MARQUANTS")
+        for projet in projets:
+            p=doc.add_paragraph(style='List Bullet'); sp(p, before=0, after=0)
+            sf(p.add_run(projet), size_pt=10, color=BLACK)
+
     experiences=cv_data.get("experiences",[])
     if experiences:
         exp_title(doc)
@@ -467,21 +482,6 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
                 exp_label(doc, "Résultats / impacts")
                 for r in resultats: exp_item(doc, r)
             if environnement: exp_label(doc, "Environnement"); exp_body(doc, environnement)
-
-    refs=cv_data.get("autres_references",[])
-    if refs:
-        section_title(doc, "AUTRES RÉFÉRENCES")
-        for ref in refs:
-            p=doc.add_paragraph(); sp(p, before=0, after=0)
-            sf(p.add_run(f"{ref.get('entreprise','')} : "), size_pt=10, bold=True, color=RED)
-            sf(p.add_run(ref.get("poste","")), size_pt=10, color=BLACK)
-
-    projets=cv_data.get("projets_marquants",[])
-    if projets:
-        section_title(doc, "PROJETS MARQUANTS")
-        for projet in projets:
-            p=doc.add_paragraph(style='List Bullet'); sp(p, before=0, after=0)
-            sf(p.add_run(projet), size_pt=10, color=BLACK)
 
     build_footer(doc)
     doc.save(output_path)
