@@ -1,9 +1,9 @@
 """
-cv_formatter.py — CV Maltem Africa — 100% fidèle référence ZAID
+cv_formatter.py — CV Maltem Africa — 100% fidèle référence ZAID v2
 """
-import os, io, re
+import os, re
 from docx import Document
-from docx.shared import Pt, RGBColor, Inches, Cm
+from docx.shared import Pt, RGBColor, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
@@ -21,58 +21,121 @@ DECO_TL = os.path.join(ASSETS, "deco_top_left_white.png")
 DECO_BR = os.path.join(ASSETS, "deco_bottom_right_white.png")
 
 
+# ─── UTILITAIRES ──────────────────────────────────────────────────────────────
+
 def sf(run, size_pt=10, bold=False, italic=False, underline=False, color=None, font="Century Gothic"):
-    run.font.name=font; run.font.size=Pt(size_pt); run.font.bold=bold
-    run.font.italic=italic; run.font.underline=underline
-    if color: run.font.color.rgb=color
-    rPr=run._r.get_or_add_rPr()
-    rF=OxmlElement('w:rFonts')
-    for a in ('w:ascii','w:hAnsi','w:eastAsia','w:cs'): rF.set(qn(a),font)
-    ex=rPr.find(qn('w:rFonts'))
-    if ex is not None: rPr.remove(ex)
-    rPr.insert(0,rF)
+    run.font.name = font
+    run.font.size = Pt(size_pt)
+    run.font.bold = bold
+    run.font.italic = italic
+    run.font.underline = underline
+    if color:
+        run.font.color.rgb = color
+    rPr = run._r.get_or_add_rPr()
+    rF = OxmlElement('w:rFonts')
+    for a in ('w:ascii', 'w:hAnsi', 'w:eastAsia', 'w:cs'):
+        rF.set(qn(a), font)
+    ex = rPr.find(qn('w:rFonts'))
+    if ex is not None:
+        rPr.remove(ex)
+    rPr.insert(0, rF)
+
 
 def sp(para, before=0, after=0, line=240):
-    pPr=para._p.get_or_add_pPr()
-    s=pPr.find(qn('w:spacing'))
-    if s is None: s=OxmlElement('w:spacing'); pPr.append(s)
-    s.set(qn('w:before'),str(int(before*20))); s.set(qn('w:after'),str(int(after*20)))
-    s.set(qn('w:line'),str(line)); s.set(qn('w:lineRule'),'auto')
+    pPr = para._p.get_or_add_pPr()
+    s = pPr.find(qn('w:spacing'))
+    if s is None:
+        s = OxmlElement('w:spacing')
+        pPr.append(s)
+    s.set(qn('w:before'), str(int(before * 20)))
+    s.set(qn('w:after'),  str(int(after  * 20)))
+    s.set(qn('w:line'),   str(line))
+    s.set(qn('w:lineRule'), 'auto')
 
-def ind(para, left=0):
-    pPr=para._p.get_or_add_pPr()
-    i=pPr.find(qn('w:ind'))
-    if i is None: i=OxmlElement('w:ind'); pPr.append(i)
-    if left: i.set(qn('w:left'),str(left))
-    elif qn('w:left') in i.attrib: del i.attrib[qn('w:left')]
 
-def bdr(para, top=False, bottom=False, color="auto", sz="12"):
-    pPr=para._p.get_or_add_pPr()
-    ex=pPr.find(qn('w:pBdr'))
-    if ex is not None: pPr.remove(ex)
-    pBdr=OxmlElement('w:pBdr')
-    for side,do in [('top',top),('bottom',bottom)]:
+def ind(para, left=0, hanging=0):
+    pPr = para._p.get_or_add_pPr()
+    i = pPr.find(qn('w:ind'))
+    if i is None:
+        i = OxmlElement('w:ind')
+        pPr.append(i)
+    if left:
+        i.set(qn('w:left'), str(left))
+    if hanging:
+        i.set(qn('w:hanging'), str(hanging))
+
+
+def bdr(para, top=False, bottom=False, color="231F20", sz="6"):
+    pPr = para._p.get_or_add_pPr()
+    ex = pPr.find(qn('w:pBdr'))
+    if ex is not None:
+        pPr.remove(ex)
+    pBdr = OxmlElement('w:pBdr')
+    for side, do in [('top', top), ('bottom', bottom)]:
         if do:
-            e=OxmlElement(f'w:{side}')
-            e.set(qn('w:val'),'single'); e.set(qn('w:sz'),sz)
-            e.set(qn('w:space'),'1'); e.set(qn('w:color'),color)
+            e = OxmlElement(f'w:{side}')
+            e.set(qn('w:val'),   'single')
+            e.set(qn('w:sz'),    sz)
+            e.set(qn('w:space'), '1')
+            e.set(qn('w:color'), color)
             pBdr.append(e)
     pPr.append(pBdr)
 
-def get_rId_from_run(run):
-    """Extraire le rId d'une image ajoutée via add_picture."""
-    m = re.search(r'r:embed="(rId\d+)"', run._r.xml)
-    return m.group(1) if m else None
 
+def page_break_before(para):
+    """Forcer un saut de page AVANT ce paragraphe."""
+    pPr = para._p.get_or_add_pPr()
+    pb = OxmlElement('w:pageBreakBefore')
+    pb.set(qn('w:val'), '1')
+    pPr.append(pb)
+
+
+def remove_cell_borders(cell):
+    """Supprimer toutes les bordures d'une cellule."""
+    tc = cell._tc
+    tcPr = tc.find(qn('w:tcPr'))
+    if tcPr is None:
+        tcPr = OxmlElement('w:tcPr')
+        tc.insert(0, tcPr)
+    tcBorders = OxmlElement('w:tcBorders')
+    for side in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+        b = OxmlElement(f'w:{side}')
+        b.set(qn('w:val'), 'none')
+        b.set(qn('w:sz'), '0')
+        b.set(qn('w:space'), '0')
+        b.set(qn('w:color'), 'auto')
+        tcBorders.append(b)
+    old = tcPr.find(qn('w:tcBorders'))
+    if old is not None:
+        tcPr.remove(old)
+    tcPr.append(tcBorders)
+
+
+def set_cell_width(cell, width_twips):
+    """Définir la largeur d'une cellule en twips."""
+    tc = cell._tc
+    tcPr = tc.find(qn('w:tcPr'))
+    if tcPr is None:
+        tcPr = OxmlElement('w:tcPr')
+        tc.insert(0, tcPr)
+    tcW = OxmlElement('w:tcW')
+    tcW.set(qn('w:w'),    str(width_twips))
+    tcW.set(qn('w:type'), 'dxa')
+    old = tcPr.find(qn('w:tcW'))
+    if old is not None:
+        tcPr.remove(old)
+    tcPr.append(tcW)
+
+
+# ─── IMAGES / FORMES FLOTTANTES ───────────────────────────────────────────────
 
 def make_anchor_from_inline(run, cx, cy, posH_offset, posV_offset, doc_id,
-                              relH="column", relV="paragraph", behindDoc="0"):
-    """Convertit un inline drawing en anchor drawing."""
+                             relH="column", relV="paragraph", behindDoc="0"):
     r_xml = run._r.xml
     m = re.search(r'r:embed="(rId\d+)"', r_xml)
-    if not m: return None
+    if not m:
+        return None
     rId = m.group(1)
-
     anchor_xml = f'''<w:drawing
   xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
@@ -144,10 +207,8 @@ def make_red_bar_xml():
 
 
 def make_badge_xml(periode_text, doc_id=100):
-    """Badge rouge arrondi avec texte blanc - construction correcte via etree."""
     cx = 1097280
     cy = 246888
-
     base_xml = f'''<w:drawing
   xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
@@ -176,13 +237,18 @@ def make_badge_xml(periode_text, doc_id=100):
             <w:txbxContent>
               <w:p>
                 <w:pPr><w:jc w:val="center"/>
-                  <w:rPr><w:rFonts w:ascii="Century Gothic" w:hAnsi="Century Gothic" w:cs="Century Gothic"/>
-                    <w:color w:val="FFFFFF"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>
-                </w:pPr>
-                <w:r><w:rPr>
+                  <w:rPr>
                     <w:rFonts w:ascii="Century Gothic" w:hAnsi="Century Gothic" w:cs="Century Gothic"/>
                     <w:color w:val="FFFFFF"/><w:sz w:val="16"/><w:szCs w:val="16"/>
-                  </w:rPr><w:t xml:space="preserve">BADGE_PLACEHOLDER</w:t></w:r>
+                  </w:rPr>
+                </w:pPr>
+                <w:r>
+                  <w:rPr>
+                    <w:rFonts w:ascii="Century Gothic" w:hAnsi="Century Gothic" w:cs="Century Gothic"/>
+                    <w:color w:val="FFFFFF"/><w:sz w:val="16"/><w:szCs w:val="16"/>
+                  </w:rPr>
+                  <w:t xml:space="preserve">BADGE_PLACEHOLDER</w:t>
+                </w:r>
               </w:p>
             </w:txbxContent>
           </wps:txbx>
@@ -200,6 +266,8 @@ def make_badge_xml(periode_text, doc_id=100):
             break
     return root
 
+
+# ─── EN-TÊTE ──────────────────────────────────────────────────────────────────
 
 def build_header(doc, cv_data):
     p_main = doc.add_paragraph()
@@ -221,73 +289,279 @@ def build_header(doc, cv_data):
     r_tl = p_main.add_run()
     r_tl.add_picture(DECO_TL, width=Cm(1.9))
     tl_anchor = make_anchor_from_inline(r_tl, 682625, 1567180, -106680, -106680, 50,
-                                         relH="page", relV="paragraph", behindDoc="1")
+                                        relH="page", relV="paragraph", behindDoc="1")
     if tl_anchor is not None:
         r_tl._r.getparent().remove(r_tl._r)
         p_main._p.insert(3, tl_anchor)
 
     # Ligne noire au-dessus du nom
-    p_l1 = doc.add_paragraph(); sp(p_l1, before=6, after=4)
+    p_l1 = doc.add_paragraph()
+    sp(p_l1, before=6, after=4)
     bdr(p_l1, bottom=True, color="231F20", sz="6")
 
-    # Nom + expérience
-    p_nom = doc.add_paragraph(); p_nom.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Nom + expérience (normal, centré)
+    p_nom = doc.add_paragraph()
+    p_nom.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sp(p_nom, before=4, after=2)
-    nom = cv_data.get("nom_prenom",""); exp = cv_data.get("annees_experience","")
-    r_n = p_nom.add_run(nom); sf(r_n, size_pt=14)
-    if exp: r_e = p_nom.add_run(f" – {exp}"); sf(r_e, size_pt=14)
+    nom = cv_data.get("nom_prenom", "")
+    exp = cv_data.get("annees_experience", "")
+    r_n = p_nom.add_run(nom)
+    sf(r_n, size_pt=14)
+    if exp:
+        r_e = p_nom.add_run(f" – {exp}")
+        sf(r_e, size_pt=14)
 
-    # Titre poste — gras, centré
-    p_t = doc.add_paragraph(); p_t.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Titre poste — gras, centré, taille 14
+    p_t = doc.add_paragraph()
+    p_t.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sp(p_t, before=0, after=4)
-    sf(p_t.add_run(cv_data.get("titre_poste","")), size_pt=14, bold=True)
+    sf(p_t.add_run(cv_data.get("titre_poste", "")), size_pt=14, bold=True)
 
     # Ligne noire en dessous
-    p_l2 = doc.add_paragraph(); sp(p_l2, before=4, after=8)
+    p_l2 = doc.add_paragraph()
+    sp(p_l2, before=4, after=8)
     bdr(p_l2, bottom=True, color="231F20", sz="6")
 
 
-def section_title(doc, title):
-    """Titre de section : texte gras souligné + ligne horizontale en dessous."""
+# ─── TITRE DE SECTION ─────────────────────────────────────────────────────────
+
+def section_title(doc, title, page_break=False):
+    """
+    Titre de section : texte GRAS + ligne noire fine en dessous.
+    Comme dans la référence : 'À PROPOS', 'COMPÉTENCES', 'FORMATION'...
+    Si page_break=True → saut de page AVANT (pour EXPÉRIENCES PROFESSIONNELLES).
+    """
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    sp(p, before=10, after=2)
-    r = p.add_run(title.upper())
-    sf(r, size_pt=10, bold=True, color=BLACK)
+    sp(p, before=10, after=4)
+    if page_break:
+        page_break_before(p)
+    sf(p.add_run(title.upper()), size_pt=10, bold=True, color=BLACK)
     bdr(p, bottom=True, color="231F20", sz="6")
     return p
 
 
-def subsection_title(doc, title):
-    """Sous-titre de catégorie compétences : gras, sans ligne de séparation."""
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    sp(p, before=6, after=0)
-    sf(p.add_run(title), size_pt=10, bold=True, color=BLACK)
-    return p
+# ─── À PROPOS ─────────────────────────────────────────────────────────────────
+
+def build_a_propos(doc, a_propos):
+    """
+    Section À PROPOS — fidèle référence :
+    - Chaque bullet = paragraphe séparé avec grand espacement vertical
+    - Tiret + espace + texte justifié
+    - Mots-clés en gras détectés automatiquement (entre ** ou via liste)
+    - Indentation gauche à 426 twips (~0.75cm)
+    """
+    if not a_propos:
+        return
+
+    section_title(doc, "À PROPOS")
+
+    lignes = a_propos if isinstance(a_propos, list) else [a_propos]
+
+    for ligne in lignes:
+        ligne = ligne.strip()
+        if not ligne:
+            continue
+
+        # ── Paragraphe bullet avec espacement référence ──
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        # Espacement important entre bullets comme dans la référence
+        sp(p, before=8, after=8, line=276)
+        # Indentation : left=426, hanging=0
+        ind(p, left=426)
+
+        # Tiret
+        r_dash = p.add_run("- ")
+        sf(r_dash, size_pt=10, color=BLACK)
+
+        # Traiter les mots en gras (entre ** ou liste de mots-clés)
+        _add_text_with_bold(p, ligne)
+
+    # Espace après la section
+    p_space = doc.add_paragraph()
+    sp(p_space, before=0, after=4)
 
 
-def exp_title(doc):
-    """Titre EXPÉRIENCES PROFESSIONNELLES : centré rouge entre deux lignes."""
-    p_top = doc.add_paragraph(); sp(p_top, before=10, after=0)
+def _add_text_with_bold(para, text):
+    """
+    Ajoute du texte dans un paragraphe en gérant le gras.
+    Supporte le format **mot** pour le gras, sinon texte simple.
+    """
+    # Parser les segments **gras** et normal
+    parts = re.split(r'(\*\*[^*]+\*\*)', text)
+    for part in parts:
+        if part.startswith('**') and part.endswith('**'):
+            inner = part[2:-2]
+            r = para.add_run(inner)
+            sf(r, size_pt=10, bold=True, color=BLACK)
+        else:
+            r = para.add_run(part)
+            sf(r, size_pt=10, color=BLACK)
+
+
+# ─── COMPÉTENCES EN 2 COLONNES ────────────────────────────────────────────────
+
+def build_competences_table(doc, competences):
+    """
+    Compétences en tableau 2 colonnes SANS bordures visibles.
+    - Colonne gauche et droite avec GAP au centre (espace blanc de 0.5cm)
+    - Sous-titres en GRAS
+    - Items avec tiret et indentation
+    - Espacement between catégories
+    Fidèle 100% à la référence.
+    """
+    if not competences:
+        return
+
+    section_title(doc, "COMPÉTENCES")
+
+    # Largeurs : page utile = 21 - 3.6 = 17.4cm
+    # Col gauche = 8.2cm, gap = 1.0cm, col droite = 8.2cm
+    # En twips (1cm = 567 twips)
+    col_w   = int(8.2 * 567)   # 4649 twips par colonne
+    gap_w   = int(1.0 * 567)   # 567 twips pour le gap
+    total_w = col_w * 2 + gap_w
+
+    # Diviser les catégories : moitié gauche, moitié droite
+    mid = (len(competences) + 1) // 2
+    col_left  = competences[:mid]
+    col_right = competences[mid:]
+
+    # Créer tableau 1 ligne x 3 colonnes (col_gauche | gap | col_droite)
+    tbl = doc.add_table(rows=1, cols=3)
+    tbl.style = 'Table Grid'
+
+    # Supprimer les bordures du tableau entier
+    tbl_el = tbl._tbl
+    tblPr  = tbl_el.find(qn('w:tblPr'))
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        tbl_el.insert(0, tblPr)
+
+    # Largeur totale du tableau
+    tblW = OxmlElement('w:tblW')
+    tblW.set(qn('w:w'),    str(total_w))
+    tblW.set(qn('w:type'), 'dxa')
+    old_tblW = tblPr.find(qn('w:tblW'))
+    if old_tblW is not None:
+        tblPr.remove(old_tblW)
+    tblPr.append(tblW)
+
+    # Supprimer bordures tableau
+    tblBorders = OxmlElement('w:tblBorders')
+    for side in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+        b = OxmlElement(f'w:{side}')
+        b.set(qn('w:val'),   'none')
+        b.set(qn('w:sz'),    '0')
+        b.set(qn('w:space'), '0')
+        b.set(qn('w:color'), 'auto')
+        tblBorders.append(b)
+    old_bdr = tblPr.find(qn('w:tblBorders'))
+    if old_bdr is not None:
+        tblPr.remove(old_bdr)
+    tblPr.append(tblBorders)
+
+    cells = tbl.rows[0].cells
+
+    # Définir largeurs des 3 cellules
+    set_cell_width(cells[0], col_w)   # colonne gauche
+    set_cell_width(cells[1], gap_w)   # gap vide
+    set_cell_width(cells[2], col_w)   # colonne droite
+
+    # Supprimer bordures de chaque cellule
+    for cell in cells:
+        remove_cell_borders(cell)
+
+    # Remplir les colonnes
+    _fill_competence_column(cells[0], col_left)
+    _fill_competence_column(cells[2], col_right)
+    # Cellule du milieu reste vide
+
+    # Espace après tableau
+    p_after = doc.add_paragraph()
+    sp(p_after, before=4, after=4)
+
+
+def _fill_competence_column(cell, categories):
+    """Remplit une cellule avec les catégories de compétences."""
+    # Vider le paragraphe vide par défaut
+    for p in cell.paragraphs:
+        p.clear()
+
+    first = True
+    for cat in categories:
+        # ── Sous-titre catégorie ──
+        if cat.get("categorie"):
+            if first:
+                p = cell.paragraphs[0]
+                first = False
+            else:
+                p = cell.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            # Espacement before plus grand entre catégories sauf la première
+            sp(p, before=6 if not first else 0, after=2)
+            sf(p.add_run(cat["categorie"]), size_pt=10, bold=True, color=BLACK)
+
+        # ── Items avec tiret ──
+        for item in cat.get("items", []):
+            if first:
+                p = cell.paragraphs[0]
+                first = False
+            else:
+                p = cell.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            sp(p, before=0, after=0, line=240)
+            ind(p, left=283)  # ~0.5cm indentation comme dans la référence
+            r_dash = p.add_run("- ")
+            sf(r_dash, size_pt=10, color=BLACK)
+            r_item = p.add_run(item)
+            sf(r_item, size_pt=10, color=BLACK)
+
+
+# ─── EXPÉRIENCES ──────────────────────────────────────────────────────────────
+
+def exp_section_title(doc):
+    """
+    Titre EXPÉRIENCES PROFESSIONNELLES :
+    - NOUVELLE PAGE avant (page break)
+    - Centré, rouge/bordeaux, entre deux lignes noires
+    Fidèle 100% à la référence.
+    """
+    # Ligne noire au-dessus
+    p_top = doc.add_paragraph()
+    sp(p_top, before=10, after=0)
+    # PAGE BREAK BEFORE sur ce paragraphe
+    page_break_before(p_top)
     bdr(p_top, bottom=True, color="231F20", sz="6")
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Titre centré rouge
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sp(p, before=4, after=4)
     sf(p.add_run("EXPÉRIENCES PROFESSIONNELLES"), size_pt=12, bold=True, color=TITLE)
-    p_bot = doc.add_paragraph(); sp(p_bot, before=0, after=8)
+
+    # Ligne noire en dessous
+    p_bot = doc.add_paragraph()
+    sp(p_bot, before=0, after=8)
     bdr(p_bot, bottom=True, color="231F20", sz="6")
 
 
 def exp_badge_line(doc, periode, entreprise, badge_id=100):
     """
-    Ligne badge : rectangle rouge arrondi à gauche + entreprise rouge gras à droite.
+    Ligne badge + entreprise :
+    - Badge rouge arrondi à gauche avec la période en blanc
+    - Entreprise en rouge GRAS MAJUSCULES à droite
+    - Indentation 1800 twips pour laisser la place au badge
     """
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     sp(p, before=10, after=2)
     ind(p, left=1800)
+
     if entreprise:
-        # FIX: entreprise en gras + majuscules comme dans la référence
         sf(p.add_run(entreprise.upper()), size_pt=10, bold=True, color=RED)
+
     if periode:
         try:
             badge = make_badge_xml(periode, doc_id=badge_id)
@@ -298,195 +572,122 @@ def exp_badge_line(doc, periode, entreprise, badge_id=100):
     return p
 
 
-def exp_poste_line(doc, poste):
-    """Poste centré et gras sous le badge — aligné au centre comme dans la référence."""
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    sp(p, before=2, after=4)
+def exp_poste(doc, poste):
+    """Poste centré gras sous le badge — comme dans la référence."""
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sp(p, before=2, after=6)
     sf(p.add_run(poste), size_pt=10, bold=True, color=BLACK)
     return p
 
 
 def exp_label(doc, label):
-    """Label de sous-section expérience : gras, sans ligne de séparation sous lui."""
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    sp(p, before=6, after=2)
+    """
+    Label de sous-section : GRAS, aligné gauche.
+    Ex: 'Contexte & enjeux :', 'Objectifs :', 'Réalisations :', 'Environnement :'
+    PAS de ligne de séparation — seulement espacement.
+    """
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    sp(p, before=8, after=2)
     sf(p.add_run(label), size_pt=10, bold=True, color=BLACK)
     return p
 
 
 def exp_body(doc, text, indent_twips=426):
-    """Corps de texte justifié avec indentation légère."""
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    sp(p, before=0, after=2); ind(p, left=indent_twips)
+    """Corps de texte justifié avec tiret, pour Contexte et Environnement."""
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    sp(p, before=0, after=2, line=252)
+    ind(p, left=indent_twips)
+    r_dash = p.add_run("- ")
+    sf(r_dash, size_pt=10, color=BLACK)
     sf(p.add_run(text), size_pt=10, color=BLACK)
     return p
 
 
-def exp_item_with_bold_prefix(doc, text, indent_twips=426):
-    """
-    Item de liste avec le début en gras jusqu'au premier ':' ou '–'.
-    Ex: "Optimisation & Diagnostic JVM : Analyse..." → début en gras, suite normale.
-    Correspond exactement au style du CV référence pour les réalisations.
-    """
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    sp(p, before=1, after=1); ind(p, left=indent_twips)
-
-    # Tiret Maltem style (espace + tiret)
-    r_dash = p.add_run("- ")
-    sf(r_dash, size_pt=10, color=BLACK)
-
-    # Chercher le premier ':' ou '–' pour séparer partie gras / partie normale
-    split_idx = -1
-    for sep in [':', ' –', ' - ']:
-        idx = text.find(sep)
-        if idx != -1:
-            split_idx = idx + len(sep)
-            break
-
-    if split_idx > 0:
-        bold_part = text[:split_idx]
-        normal_part = text[split_idx:]
-        r_bold = p.add_run(bold_part)
-        sf(r_bold, size_pt=10, bold=True, color=BLACK)
-        if normal_part.strip():
-            r_normal = p.add_run(normal_part)
-            sf(r_normal, size_pt=10, color=BLACK)
-    else:
-        r_full = p.add_run(text)
-        sf(r_full, size_pt=10, color=BLACK)
-
-    return p
-
-
 def exp_item(doc, text, indent_twips=426):
-    """Item de liste simple avec tiret Maltem style."""
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    sp(p, before=1, after=1); ind(p, left=indent_twips)
+    """
+    Item de liste simple avec tiret.
+    Pour: Objectifs, items sans gras initial.
+    """
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    sp(p, before=1, after=1, line=252)
+    ind(p, left=indent_twips)
     r_dash = p.add_run("- ")
     sf(r_dash, size_pt=10, color=BLACK)
-    r_text = p.add_run(text)
-    sf(r_text, size_pt=10, color=BLACK)
+    sf(p.add_run(text), size_pt=10, color=BLACK)
     return p
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# COMPÉTENCES EN 2 COLONNES (tableau) — comme dans le CV référence
-# ─────────────────────────────────────────────────────────────────────────────
-
-def build_competences_table(doc, competences):
+def exp_item_bold_prefix(doc, text, indent_twips=426):
     """
-    Affiche les compétences en tableau 2 colonnes, sans bordures visibles,
-    exactement comme dans le CV référence Maltem.
-    Chaque colonne contient des sous-titres gras + items avec tirets.
+    Item de réalisation avec PREMIER TERME EN GRAS jusqu'au ':'.
+    Ex: '- Optimisation & Diagnostic JVM : Analyse...'
+        → '- ' + 'Optimisation & Diagnostic JVM :' (gras) + ' Analyse...' (normal)
+    Fidèle 100% à la référence.
     """
-    if not competences:
-        return
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    sp(p, before=1, after=1, line=252)
+    ind(p, left=indent_twips)
 
-    section_title(doc, "COMPÉTENCES")
+    # Tiret
+    r_dash = p.add_run("- ")
+    sf(r_dash, size_pt=10, color=BLACK)
 
-    # Diviser les catégories en 2 colonnes équilibrées
-    mid = (len(competences) + 1) // 2
-    col_left  = competences[:mid]
-    col_right = competences[mid:]
+    # Chercher le séparateur ':' ou '–'
+    colon_idx = text.find(' : ')
+    dash_idx  = text.find(' – ')
 
-    # Largeur des colonnes (page 21cm - 3.6cm marges = 17.4cm / 2 = 8.7cm)
-    col_width = Cm(8.5)
+    if colon_idx > 0:
+        bold_part  = text[:colon_idx + 2]   # inclut ' :'
+        normal_part = text[colon_idx + 2:]   # reste après ' :'
+    elif dash_idx > 0:
+        bold_part  = text[:dash_idx + 2]
+        normal_part = text[dash_idx + 2:]
+    else:
+        # Pas de séparateur → tout normal
+        sf(p.add_run(text), size_pt=10, color=BLACK)
+        return p
 
-    tbl = doc.add_table(rows=1, cols=2)
-    tbl.style = 'Table Grid'
+    r_bold = p.add_run(bold_part)
+    sf(r_bold, size_pt=10, bold=True, color=BLACK)
 
-    # Supprimer toutes les bordures du tableau
-    tbl_el = tbl._tbl
-    tblPr = tbl_el.find(qn('w:tblPr'))
-    if tblPr is None:
-        tblPr = OxmlElement('w:tblPr')
-        tbl_el.insert(0, tblPr)
-    tblBorders = OxmlElement('w:tblBorders')
-    for side in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-        b = OxmlElement(f'w:{side}')
-        b.set(qn('w:val'), 'none')
-        b.set(qn('w:sz'), '0')
-        b.set(qn('w:space'), '0')
-        b.set(qn('w:color'), 'auto')
-        tblBorders.append(b)
-    tblPr.append(tblBorders)
+    if normal_part.strip():
+        r_normal = p.add_run(normal_part)
+        sf(r_normal, size_pt=10, color=BLACK)
 
-    # Définir la largeur des colonnes
-    for i, cell in enumerate(tbl.rows[0].cells):
-        tc = cell._tc
-        tcPr = tc.find(qn('w:tcPr'))
-        if tcPr is None:
-            tcPr = OxmlElement('w:tcPr')
-            tc.insert(0, tcPr)
-        tcW = OxmlElement('w:tcW')
-        tcW.set(qn('w:w'), str(int(col_width.emu / 914.4)))  # EMU → twips
-        tcW.set(qn('w:type'), 'dxa')
-        tcPr.append(tcW)
-        # Supprimer les bordures de cellule
-        tcBorders = OxmlElement('w:tcBorders')
-        for side in ['top', 'left', 'bottom', 'right']:
-            b = OxmlElement(f'w:{side}')
-            b.set(qn('w:val'), 'none')
-            tcBorders.append(b)
-        tcPr.append(tcBorders)
+    return p
 
-    def fill_column(cell, categories):
-        """Remplir une cellule du tableau avec les catégories de compétences."""
-        # Vider le paragraphe vide par défaut
-        for para in cell.paragraphs:
-            para.clear()
 
-        first = True
-        for cat in categories:
-            # Sous-titre catégorie en gras
-            if cat.get("categorie"):
-                if first:
-                    p = cell.paragraphs[0]
-                    first = False
-                else:
-                    p = cell.add_paragraph()
-                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                sp(p, before=6, after=0)
-                sf(p.add_run(cat["categorie"]), size_pt=10, bold=True, color=BLACK)
-
-            # Items avec tiret
-            for item in cat.get("items", []):
-                if first:
-                    p = cell.paragraphs[0]
-                    first = False
-                else:
-                    p = cell.add_paragraph()
-                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                sp(p, before=0, after=0)
-                ind(p, left=240)
-                r_dash = p.add_run("- ")
-                sf(r_dash, size_pt=10, color=BLACK)
-                r_item = p.add_run(item)
-                sf(r_item, size_pt=10, color=BLACK)
-
-    fill_column(tbl.rows[0].cells[0], col_left)
-    fill_column(tbl.rows[0].cells[1], col_right)
-
-    # Espace après le tableau
-    p_after = doc.add_paragraph()
-    sp(p_after, before=4, after=4)
-
+# ─── PIED DE PAGE ─────────────────────────────────────────────────────────────
 
 def build_footer(doc):
-    section = doc.sections[0]; footer = section.footer
-    for para in footer.paragraphs: para.clear()
-    fp = footer.paragraphs[0]; fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    section = doc.sections[0]
+    footer  = section.footer
+    for para in footer.paragraphs:
+        para.clear()
+    fp = footer.paragraphs[0]
+    fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
     sp(fp, before=0, after=0)
 
-    pPr = fp._p.get_or_add_pPr()
-    pBdr = OxmlElement('w:pBdr'); top = OxmlElement('w:top')
-    top.set(qn('w:val'), 'single'); top.set(qn('w:sz'), '6')
-    top.set(qn('w:space'), '1'); top.set(qn('w:color'), 'auto')
-    pBdr.append(top); pPr.append(pBdr)
+    pPr  = fp._p.get_or_add_pPr()
+    pBdr = OxmlElement('w:pBdr')
+    top  = OxmlElement('w:top')
+    top.set(qn('w:val'),   'single')
+    top.set(qn('w:sz'),    '6')
+    top.set(qn('w:space'), '1')
+    top.set(qn('w:color'), 'auto')
+    pBdr.append(top)
+    pPr.append(pBdr)
 
     tabs_el = OxmlElement('w:tabs')
     for val, pos in [('center', '4536'), ('right', '9026')]:
-        t = OxmlElement('w:tab'); t.set(qn('w:val'), val); t.set(qn('w:pos'), pos)
+        t = OxmlElement('w:tab')
+        t.set(qn('w:val'), val)
+        t.set(qn('w:pos'), pos)
         tabs_el.append(t)
     pPr.append(tabs_el)
 
@@ -494,7 +695,9 @@ def build_footer(doc):
     fp.add_run("\t").font.size = Pt(8)
 
     def field(para, instr):
-        r = para.add_run(); r.font.size = Pt(8); r.font.color.rgb = GREY
+        r = para.add_run()
+        r.font.size = Pt(8)
+        r.font.color.rgb = GREY
         f1 = OxmlElement('w:fldChar'); f1.set(qn('w:fldCharType'), 'begin')
         it = OxmlElement('w:instrText'); it.text = instr
         f2 = OxmlElement('w:fldChar'); f2.set(qn('w:fldCharType'), 'end')
@@ -514,23 +717,28 @@ def build_footer(doc):
         r_br._r.getparent().remove(r_br._r)
         fp._p.insert(1, br_anchor)
 
-    # Deco haut-gauche (depuis le footer avec position négative)
+    # Deco haut-gauche (depuis footer, remonte en haut de page)
     r_tl = fp.add_run()
     r_tl.add_picture(DECO_TL, width=Cm(1.9))
     tl_anchor = make_anchor_from_inline(r_tl, 682625, 1567180, -106680, -9500000, 52,
-                                         relH="page", relV="paragraph", behindDoc="1")
+                                        relH="page", relV="paragraph", behindDoc="1")
     if tl_anchor is not None:
         r_tl._r.getparent().remove(r_tl._r)
         fp._p.insert(1, tl_anchor)
 
 
+# ─── GÉNÉRATION PRINCIPALE ────────────────────────────────────────────────────
+
 def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
     doc = Document()
-    s = doc.sections[0]
-    s.page_height = Cm(29.7); s.page_width = Cm(21.0)
-    s.left_margin = Cm(1.8);  s.right_margin = Cm(1.8)
-    s.top_margin  = Cm(1.8);  s.bottom_margin = Cm(1.8)
-    s.footer_distance = Cm(0.8)
+    s   = doc.sections[0]
+    s.page_height      = Cm(29.7)
+    s.page_width       = Cm(21.0)
+    s.left_margin      = Cm(1.8)
+    s.right_margin     = Cm(1.8)
+    s.top_margin       = Cm(1.8)
+    s.bottom_margin    = Cm(1.8)
+    s.footer_distance  = Cm(0.8)
     doc.styles['Normal'].font.name = 'Century Gothic'
     doc.styles['Normal'].font.size = Pt(10)
 
@@ -540,19 +748,9 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
     # ── À PROPOS ─────────────────────────────────────────────────────────────
     a_propos = cv_data.get("a_propos", "")
     if a_propos:
-        section_title(doc, "À PROPOS")
-        # Traiter les lignes séparées par '\n' ou liste
-        lignes = a_propos if isinstance(a_propos, list) else [a_propos]
-        for ligne in lignes:
-            if ligne.strip():
-                p_ap = doc.add_paragraph(); p_ap.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-                sp(p_ap, before=4, after=2); ind(p_ap, left=426)
-                r_dash = p_ap.add_run("- ")
-                sf(r_dash, size_pt=10, color=BLACK)
-                sf(p_ap.add_run(ligne.strip()), size_pt=10, color=BLACK)
-        p_space = doc.add_paragraph(); sp(p_space, before=0, after=6)
+        build_a_propos(doc, a_propos)
 
-    # ── COMPÉTENCES (2 colonnes) ──────────────────────────────────────────────
+    # ── COMPÉTENCES (2 colonnes avec gap) ────────────────────────────────────
     competences = cv_data.get("competences", [])
     if competences:
         build_competences_table(doc, competences)
@@ -562,16 +760,18 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
     if formations:
         section_title(doc, "FORMATION")
         for form in formations:
-            p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
             sp(p, before=4, after=2)
-            annee = form.get("annee", "")
-            diplome = form.get("diplome", "")
+            annee       = form.get("annee", "")
+            diplome     = form.get("diplome", "")
             etablissement = form.get("etablissement", "")
             if annee:
                 r_yr = p.add_run(f"{annee}  ")
                 sf(r_yr, size_pt=10, bold=True, color=BLACK)
             txt = diplome
-            if etablissement: txt += f" – {etablissement}"
+            if etablissement:
+                txt += f" – {etablissement}"
             sf(p.add_run(txt), size_pt=10, color=BLACK)
 
     # ── CERTIFICATIONS ───────────────────────────────────────────────────────
@@ -579,8 +779,10 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
     if certs:
         section_title(doc, "CERTIFICATIONS")
         for cert in certs:
-            p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            sp(p, before=0, after=0); ind(p, left=426)
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            sp(p, before=0, after=0)
+            ind(p, left=426)
             r_dash = p.add_run("- ")
             sf(r_dash, size_pt=10, color=BLACK)
             sf(p.add_run(cert), size_pt=10, color=BLACK)
@@ -590,63 +792,48 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
     if langues:
         section_title(doc, "LANGUES")
         for langue in langues:
-            p = doc.add_paragraph(); sp(p, before=0, after=0); ind(p, left=426)
+            p = doc.add_paragraph()
+            sp(p, before=0, after=0)
+            ind(p, left=426)
             r_dash = p.add_run("- ")
             sf(r_dash, size_pt=10, color=BLACK)
             sf(p.add_run(langue), size_pt=10, color=BLACK)
 
-    # ── AUTRES RÉFÉRENCES ────────────────────────────────────────────────────
-    refs = cv_data.get("autres_references", [])
-    if refs:
-        section_title(doc, "AUTRES RÉFÉRENCES")
-        for ref in refs:
-            p = doc.add_paragraph(); sp(p, before=0, after=0)
-            sf(p.add_run(f"{ref.get('entreprise', '')} : "), size_pt=10, bold=True, color=RED)
-            sf(p.add_run(ref.get("poste", "")), size_pt=10, color=BLACK)
-
-    # ── PROJETS MARQUANTS ────────────────────────────────────────────────────
-    projets = cv_data.get("projets_marquants", [])
-    if projets:
-        section_title(doc, "PROJETS MARQUANTS")
-        for projet in projets:
-            p = doc.add_paragraph(); sp(p, before=0, after=0); ind(p, left=426)
-            r_dash = p.add_run("- ")
-            sf(r_dash, size_pt=10, color=BLACK)
-            sf(p.add_run(projet), size_pt=10, color=BLACK)
-
-    # ── EXPÉRIENCES PROFESSIONNELLES ─────────────────────────────────────────
+    # ── EXPÉRIENCES PROFESSIONNELLES (nouvelle page) ──────────────────────────
     experiences = cv_data.get("experiences", [])
     if experiences:
-        exp_title(doc)
-        badge_id = 100
+        # Titre avec saut de page avant
+        exp_section_title(doc)
 
+        badge_id = 100
         for exp in experiences:
-            periode      = exp.get("periode", "")
-            entreprise   = exp.get("entreprise", "")
-            poste        = exp.get("poste", "")
-            direction    = exp.get("direction", "")
-            contexte     = exp.get("contexte", "")
-            objectifs    = exp.get("objectifs", [])
-            missions     = exp.get("missions", [])
-            realisations = exp.get("realisations", [])
-            resultats    = exp.get("resultats", [])
+            periode       = exp.get("periode", "")
+            entreprise    = exp.get("entreprise", "")
+            poste         = exp.get("poste", "")
+            direction     = exp.get("direction", "")
+            contexte      = exp.get("contexte", "")
+            objectifs     = exp.get("objectifs", [])
+            missions      = exp.get("missions", [])
+            realisations  = exp.get("realisations", [])
+            resultats     = exp.get("resultats", [])
             environnement = exp.get("environnement", "")
 
-            # Badge période + entreprise gras rouge en majuscules
+            # Badge période + entreprise
             exp_badge_line(doc, periode, entreprise, badge_id=badge_id)
             badge_id += 1
 
             # Poste centré gras
             if poste:
-                exp_poste_line(doc, poste)
+                exp_poste(doc, poste)
 
-            # Direction (si présente) centré gras
+            # Direction (si présente)
             if direction:
-                p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 sp(p, before=0, after=2)
                 sf(p.add_run(direction), size_pt=10, bold=True, color=BLACK)
 
-            # Contexte & enjeux — label gras + body justifié
+            # Contexte & enjeux
             if contexte:
                 exp_label(doc, "Contexte & enjeux :")
                 if isinstance(contexte, list):
@@ -661,12 +848,12 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
                 for o in objectifs:
                     exp_item(doc, o)
 
-            # Réalisations — avec premier terme en gras avant ':'
+            # Réalisations (premier terme en gras)
             reals = realisations if realisations else missions
             if reals:
                 exp_label(doc, "Réalisations :")
                 for r in reals:
-                    exp_item_with_bold_prefix(doc, r)
+                    exp_item_bold_prefix(doc, r)
 
             # Résultats / impacts
             if resultats:
@@ -677,10 +864,15 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
             # Environnement
             if environnement:
                 exp_label(doc, "Environnement :")
-                exp_body(doc, environnement)
+                if isinstance(environnement, list):
+                    for e in environnement:
+                        exp_item(doc, e)
+                else:
+                    exp_body(doc, environnement)
 
-            # Espace entre expériences
-            p_sep = doc.add_paragraph(); sp(p_sep, before=4, after=0)
+            # Séparateur entre expériences
+            p_sep = doc.add_paragraph()
+            sp(p_sep, before=6, after=0)
 
     # ── PIED DE PAGE ─────────────────────────────────────────────────────────
     build_footer(doc)
