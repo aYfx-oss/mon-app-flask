@@ -53,7 +53,7 @@ Cherche bien le vrai nom de la personne, ne mets JAMAIS "Prénom NOM" comme vale
 
 Retourne ce JSON exact :
 {
-  "nom_prenom": "le vrai prénom et nom de la personne trouvé dans le CV",
+  "nom_prenom": "NOM ET PRÉNOM",
   "titre_poste": "Titre du poste actuel ou recherché",
   "annees_experience": "X ans d'expérience (calcule depuis les dates)",
   "a_propos": "Si résumé présent dans le CV → copie-le exactement. Sinon → génère 2-3 phrases professionnelles basées sur le profil réel de la personne",
