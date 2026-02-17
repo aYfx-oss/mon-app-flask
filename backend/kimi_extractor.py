@@ -16,7 +16,7 @@ Structure JSON exacte à retourner :
   "nom_prenom": "Prénom NOM",
   "titre_poste": "Titre du poste",
   "annees_experience": "X ans d'expérience",
-  "a_propos": "Texte de présentation ou chaîne vide si absent",
+  "a_propos": "Texte de présentation",
   "competences": [
     {
       "categorie": "Nom de la catégorie",
@@ -57,7 +57,9 @@ Structure JSON exacte à retourner :
 
 Règles importantes :
 - Pour annees_experience : calcule à partir des dates et écris "X ans d'expérience"
-- Pour a_propos : si le CV a un résumé/profil, mets-le ici. Sinon laisse une chaîne vide ""
+- Pour a_propos : 
+  * SI le CV contient un résumé/profil/à propos écrit par le candidat → copie-le tel quel
+  * SI le CV ne contient PAS de résumé/profil → génère un paragraphe professionnel de 2-3 phrases basé sur l'analyse de ses expériences, compétences et formations. Ce texte doit refléter fidèlement son profil réel.
 - Pour les expériences : remplis objectifs, missions, realisations selon ce qui est dans le CV
 - Si un champ n'existe pas dans le CV, utilise une liste vide [] ou une chaîne vide ""
 - Retourne UNIQUEMENT le JSON, pas d'explication"""
