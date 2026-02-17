@@ -799,6 +799,39 @@ def generate_maltem_cv(cv_data: dict, output_path: str) -> str:
             sf(r_dash, size_pt=10, color=BLACK)
             sf(p.add_run(langue), size_pt=10, color=BLACK)
 
+    # ── AUTRES RÉFÉRENCES ────────────────────────────────────────────────────
+    refs = cv_data.get("autres_references", [])
+    if refs:
+        section_title(doc, "AUTRES RÉFÉRENCES")
+        for ref in refs:
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            sp(p, before=2, after=2)
+            # Entreprise en rouge gras + poste en noir
+            entreprise_ref = ref.get("entreprise", "") if isinstance(ref, dict) else ""
+            poste_ref      = ref.get("poste", "")      if isinstance(ref, dict) else ""
+            if entreprise_ref:
+                r_ent = p.add_run(f"{entreprise_ref} : ")
+                sf(r_ent, size_pt=10, bold=True, color=RED)
+            if poste_ref:
+                sf(p.add_run(poste_ref), size_pt=10, color=BLACK)
+            # Si c'est juste une string
+            if isinstance(ref, str):
+                sf(p.add_run(ref), size_pt=10, color=BLACK)
+
+    # ── PROJETS MARQUANTS ────────────────────────────────────────────────────
+    projets = cv_data.get("projets_marquants", [])
+    if projets:
+        section_title(doc, "PROJETS MARQUANTS")
+        for projet in projets:
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            sp(p, before=1, after=1)
+            ind(p, left=426)
+            r_dash = p.add_run("- ")
+            sf(r_dash, size_pt=10, color=BLACK)
+            sf(p.add_run(projet if isinstance(projet, str) else str(projet)), size_pt=10, color=BLACK)
+
     # ── EXPÉRIENCES PROFESSIONNELLES (nouvelle page) ──────────────────────────
     experiences = cv_data.get("experiences", [])
     if experiences:
