@@ -90,6 +90,21 @@ def page_break_before(para):
     pPr.append(pb)
 
 
+def keep_with_next(para):
+    """
+    Empêche un titre de section d'être seul en bas de page.
+    Word colle ce paragraphe au paragraphe suivant.
+    Utiliser sur TOUS les titres de sections.
+    """
+    pPr = para._p.get_or_add_pPr()
+    old = pPr.find(qn('w:keepWithNext'))
+    if old is not None:
+        pPr.remove(old)
+    kwn = OxmlElement('w:keepWithNext')
+    kwn.set(qn('w:val'), '1')
+    pPr.append(kwn)
+
+
 def remove_cell_borders(cell):
     """Supprimer toutes les bordures d'une cellule."""
     tc = cell._tc
@@ -336,6 +351,7 @@ def section_title(doc, title, page_break=False):
     sp(p, before=10, after=4)
     if page_break:
         page_break_before(p)
+    keep_with_next(p)  # titre toujours collé à son premier sous-élément
     sf(p.add_run(title.upper()), size_pt=10, bold=True, color=BLACK)
     bdr(p, bottom=True, color="231F20", sz="6")
     return p
@@ -533,6 +549,7 @@ def exp_section_title(doc):
     sp(p_top, before=10, after=0)
     # PAGE BREAK BEFORE sur ce paragraphe
     page_break_before(p_top)
+    keep_with_next(p_top)
     bdr(p_top, bottom=True, color="231F20", sz="6")
 
     # Titre centré rouge
@@ -561,6 +578,7 @@ def exp_badge_line(doc, periode, entreprise, badge_id=100):
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     sp(p, before=10, after=2)
     ind(p, left=1800)
+    keep_with_next(p)  # badge toujours collé au poste qui suit
 
     if periode:
         try:
@@ -599,10 +617,12 @@ def exp_label(doc, label):
     Label de sous-section : GRAS, aligné gauche.
     Ex: 'Contexte & enjeux :', 'Objectifs :', 'Réalisations :', 'Environnement :'
     PAS de ligne de séparation — seulement espacement.
+    keepWithNext : évite que le label soit seul en bas de page sans son contenu.
     """
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     sp(p, before=8, after=2)
+    keep_with_next(p)  # label toujours collé à son premier item
     sf(p.add_run(label), size_pt=10, bold=True, color=BLACK)
     return p
 
