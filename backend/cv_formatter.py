@@ -553,22 +553,35 @@ def exp_badge_line(doc, periode, entreprise, badge_id=100):
     - Badge rouge arrondi à gauche avec la période en blanc
     - Entreprise en rouge GRAS MAJUSCULES à droite
     - Indentation 1800 twips pour laisser la place au badge
+
+    IMPORTANT : le <w:drawing> du badge DOIT être dans un <w:r> (run),
+    pas directement dans <w:p>, sinon Word l'ignore silencieusement.
     """
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     sp(p, before=10, after=2)
     ind(p, left=1800)
 
-    if entreprise:
-        sf(p.add_run(entreprise.upper()), size_pt=10, bold=True, color=RED)
-
     if periode:
         try:
             badge = make_badge_xml(periode, doc_id=badge_id)
-            p._p.insert(1, badge)
-        except Exception:
+            # ── Encapsuler le badge dans un <w:r> ──────────────────────────
+            r_badge = OxmlElement('w:r')
+            r_badge.append(badge)
+            # Insérer après <w:pPr> (index 1)
+            pPr = p._p.find(qn('w:pPr'))
+            if pPr is not None:
+                pPr.addnext(r_badge)
+            else:
+                p._p.insert(0, r_badge)
+        except Exception as e:
+            # Fallback texte si badge échoue
             r_per = p.add_run(f"[{periode}]  ")
             sf(r_per, size_pt=9, bold=True, color=RED)
+
+    if entreprise:
+        sf(p.add_run(entreprise.upper()), size_pt=10, bold=True, color=RED)
+
     return p
 
 
